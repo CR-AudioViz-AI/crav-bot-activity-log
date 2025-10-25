@@ -64,7 +64,7 @@ export default async function BotDashboardPage({ params }: PageProps) {
   const bot = botData as any;
 
   // Get recent activities
-  const { data: activities, error: activitiesError } = await supabase
+  const { data: activities, error: activitiesError } = await (supabase as any)
     .from('activities')
     .select('*')
     .eq('bot_id', bot.id)
