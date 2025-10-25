@@ -9,6 +9,7 @@ export const activityIngestSchema = z.object({
   severity: z.enum(['info', 'success', 'warning', 'error', 'needs_attention']).default('info'),
   message: z.string().max(1000).optional().nullable(),
   details: z.record(z.any()).optional().nullable(),
+  metadata: z.record(z.any()).optional().nullable(),
   ticket_id: z.string().max(100).optional().nullable(),
   tags: z.array(z.string().max(50)).optional().nullable(),
   occurred_at: z.string().datetime(),
