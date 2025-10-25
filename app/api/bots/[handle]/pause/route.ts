@@ -32,32 +32,29 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot
-    const { data, error: botError } = await supabase
+    // Get bot with type assertion
+    const { data: botData, error: botError } = await (supabase as any)
       .from('bots')
       .select('id, handle, display_name, is_paused')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
 
-    if (botError || !data) {
+    if (botError || !botData) {
       return NextResponse.json(
         { error: 'Bot not found' },
         { status: 404 }
       );
     }
 
-    const bot = data as {
-      id: string;
-      handle: string;
-      display_name: string;
-      is_paused: boolean;
-    };
+    // Type assertion after null check
+    const bot = botData as any;
 
     // Toggle pause status
     const newPauseState = !bot.is_paused;
     
-    const { error: updateError } = await supabase
+    // Update bot with type assertion
+    const { error: updateError } = await (supabase as any)
       .from('bots')
       .update({
         is_paused: newPauseState,
@@ -75,7 +72,7 @@ export async function POST(
 
     // Log audit event
     try {
-      await supabase.rpc('audit_log', {
+      await (supabase as any).rpc('audit_log', {
         p_org_id: userOrg.orgId,
         p_user_id: user.id,
         p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
@@ -93,7 +90,7 @@ export async function POST(
       message: newPauseState ? 'Bot paused successfully' : 'Bot resumed successfully',
     });
   } catch (error: unknown) {
-    const err = error as Error;
+    const err = error as any;
     console.error('Error toggling bot pause:', err);
     return NextResponse.json(
       { error: err.message || 'Internal server error' },
