@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
+import type { Database } from '@/lib/supabase/types';
+
+type BotRow = Database['public']['Tables']['bots']['Row'];
+type BotUpdate = Database['public']['Tables']['bots']['Update'];
 
 export async function POST(
   request: NextRequest,
@@ -32,13 +36,15 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot
-    const { data: bot, error: botError } = await supabase
+    // Get bot - be explicit about the query
+    const botQuery = supabase
       .from('bots')
-      .select('*')
+      .select('id, handle, display_name, is_paused')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
+    
+    const { data: bot, error: botError } = await botQuery;
 
     if (botError || !bot) {
       return NextResponse.json(
@@ -47,17 +53,20 @@ export async function POST(
       );
     }
 
-    // Toggle pause status
-    const newPauseState = !(bot as any).is_paused;
+    // Toggle pause status with explicit typing
+    const newPauseState = !bot.is_paused;
     
-    // @ts-ignore - Supabase type inference issue
-    const { error: updateError } = await supabase
+    const updateData: BotUpdate = {
+      is_paused: newPauseState,
+      updated_at: new Date().toISOString()
+    };
+    
+    const updateQuery = supabase
       .from('bots')
-      .update({ 
-        is_paused: newPauseState,
-        updated_at: new Date().toISOString()
-      } as any)
-      .eq('id', (bot as any).id);
+      .update(updateData)
+      .eq('id', bot.id);
+    
+    const { error: updateError } = await updateQuery;
 
     if (updateError) {
       console.error('Error updating bot:', updateError);
@@ -74,11 +83,11 @@ export async function POST(
         p_user_id: user.id,
         p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
         p_resource_type: 'bot',
-        p_resource_id: (bot as any).id,
-        p_details: { handle: (bot as any).handle, display_name: (bot as any).display_name },
+        p_resource_id: bot.id,
+        p_details: { handle: bot.handle, display_name: bot.display_name },
       });
     } catch (auditError) {
-      // Log but don't fail the request if audit logging fails
+      // Log but don't fail if audit fails
       console.error('Audit log error:', auditError);
     }
 
