@@ -43,7 +43,7 @@ export default async function BotsPage() {
   }
 
   // Get bots for this organization
-  const { data: bots, error } = await supabase
+  const { data: bots, error } = await (supabase as any)
     .from('bots')
     .select(`
       *,
