@@ -9,6 +9,21 @@ import Link from 'next/link';
 import { ArrowLeft, Key, Pause, Play, Zap, AlertTriangle } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
+// Type definition
+type Bot = {
+  id: string;
+  handle: string;
+  display_name: string;
+  is_paused: boolean;
+  last_activity_at: string | null;
+  org_id: string;
+  default_tags: string[] | null;
+  hmac_secret: string;
+  rate_limit_per_min: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 interface PageProps {
   params: {
     handle: string;
@@ -33,19 +48,17 @@ export default async function BotSettingsPage({ params }: PageProps) {
   }
 
   // Get bot details
-  const { data: botData, error: botError } = await (supabase as any)
+  const { data: bot, error: botError } = await supabase
     .from('bots')
     .select('*')
     .eq('handle', params.handle)
     .eq('org_id', userOrg.orgId)
-    .single();
+    .single()
+    .returns<Bot>();
 
-  if (botError || !botData) {
+  if (botError || !bot) {
     return notFound();
   }
-
-  // Type assertion after null check
-  const bot = botData as any;
 
   // Check if user is admin
   try {
