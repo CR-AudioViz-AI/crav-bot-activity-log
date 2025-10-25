@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
 
+// Define proper types
+interface Bot {
+  id: string;
+  handle: string;
+  display_name: string;
+  is_paused: boolean;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { handle: string } }
@@ -32,29 +40,26 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot with type assertion
-    const { data: botData, error: botError } = await (supabase as any)
+    // Get bot - properly typed
+    const { data: bot, error: botError } = await supabase
       .from('bots')
       .select('id, handle, display_name, is_paused')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
-      .single();
+      .single<Bot>();
 
-    if (botError || !botData) {
+    if (botError || !bot) {
       return NextResponse.json(
         { error: 'Bot not found' },
         { status: 404 }
       );
     }
 
-    // Type assertion after null check
-    const bot = botData as any;
-
     // Toggle pause status
     const newPauseState = !bot.is_paused;
     
-    // Update bot with type assertion
-    const { error: updateError } = await (supabase as any)
+    // Update bot
+    const { error: updateError } = await supabase
       .from('bots')
       .update({
         is_paused: newPauseState,
@@ -72,7 +77,7 @@ export async function POST(
 
     // Log audit event
     try {
-      await (supabase as any).rpc('audit_log', {
+      await supabase.rpc('audit_log', {
         p_org_id: userOrg.orgId,
         p_user_id: user.id,
         p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
@@ -90,7 +95,7 @@ export async function POST(
       message: newPauseState ? 'Bot paused successfully' : 'Bot resumed successfully',
     });
   } catch (error: unknown) {
-    const err = error as any;
+    const err = error as Error;
     console.error('Error toggling bot pause:', err);
     return NextResponse.json(
       { error: err.message || 'Internal server error' },
