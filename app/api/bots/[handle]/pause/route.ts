@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
+import type { Database } from '@/lib/supabase/types';
 
-// Define bot type explicitly
-type Bot = {
-  id: string;
-  handle: string;
-  display_name: string;
-  org_id: string;
-  is_paused: boolean;
-  [key: string]: any;
-};
+type Bot = Database['public']['Tables']['bots']['Row'];
 
 export async function POST(
   request: NextRequest,
@@ -42,31 +35,33 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot with explicit type
-    const { data: bot, error: botError } = await supabase
+    // Get bot
+    const { data, error: botError } = await supabase
       .from('bots')
       .select('*')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
 
-    if (botError || !bot) {
+    if (botError || !data) {
       return NextResponse.json(
         { error: 'Bot not found' },
         { status: 404 }
       );
     }
 
-    // Type assertion to help TypeScript
-    const typedBot = bot as Bot;
+    const bot = data as Bot;
 
     // Toggle pause status
-    const newPauseState = !typedBot.is_paused;
+    const newPauseState = !bot.is_paused;
     
     const { error: updateError } = await supabase
       .from('bots')
-      .update({ is_paused: newPauseState })
-      .eq('id', typedBot.id);
+      .update({ 
+        is_paused: newPauseState,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bot.id);
 
     if (updateError) {
       console.error('Error updating bot:', updateError);
@@ -77,14 +72,19 @@ export async function POST(
     }
 
     // Log audit event
-    await supabase.rpc('audit_log', {
-      p_org_id: userOrg.orgId,
-      p_user_id: user.id,
-      p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
-      p_resource_type: 'bot',
-      p_resource_id: typedBot.id,
-      p_details: { handle: typedBot.handle, display_name: typedBot.display_name },
-    });
+    try {
+      await supabase.rpc('audit_log', {
+        p_org_id: userOrg.orgId,
+        p_user_id: user.id,
+        p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
+        p_resource_type: 'bot',
+        p_resource_id: bot.id,
+        p_details: { handle: bot.handle, display_name: bot.display_name },
+      });
+    } catch (auditError) {
+      // Log but don't fail the request if audit logging fails
+      console.error('Audit log error:', auditError);
+    }
 
     return NextResponse.json({
       success: true,
