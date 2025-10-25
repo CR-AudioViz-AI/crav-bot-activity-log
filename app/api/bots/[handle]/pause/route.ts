@@ -32,8 +32,8 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot
-    const { data: botData, error: botError } = await supabase
+    // Get bot with type assertion
+    const { data: botData, error: botError } = await (supabase as any)
       .from('bots')
       .select('id, handle, display_name, is_paused')
       .eq('handle', params.handle)
@@ -53,8 +53,8 @@ export async function POST(
     // Toggle pause status
     const newPauseState = !bot.is_paused;
     
-    // Update bot
-    const { error: updateError } = await supabase
+    // Update bot with type assertion
+    const { error: updateError } = await (supabase as any)
       .from('bots')
       .update({
         is_paused: newPauseState,
@@ -72,7 +72,7 @@ export async function POST(
 
     // Log audit event
     try {
-      await supabase.rpc('audit_log', {
+      await (supabase as any).rpc('audit_log', {
         p_org_id: userOrg.orgId,
         p_user_id: user.id,
         p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
