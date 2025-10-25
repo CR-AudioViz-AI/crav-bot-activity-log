@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
-import type { Database } from '@/lib/supabase/types';
-
-type BotRow = Database['public']['Tables']['bots']['Row'];
-type BotUpdate = Database['public']['Tables']['bots']['Update'];
 
 export async function POST(
   request: NextRequest,
@@ -36,15 +32,13 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot - be explicit about the query
-    const botQuery = supabase
+    // Get bot
+    const { data: bot, error: botError } = await supabase
       .from('bots')
       .select('id, handle, display_name, is_paused')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
-    
-    const { data: bot, error: botError } = await botQuery;
 
     if (botError || !bot) {
       return NextResponse.json(
@@ -53,20 +47,17 @@ export async function POST(
       );
     }
 
-    // Toggle pause status with explicit typing
-    const newPauseState = !bot.is_paused;
+    // Toggle pause status
+    const newPauseState = !(bot as any).is_paused;
     
-    const updateData: BotUpdate = {
-      is_paused: newPauseState,
-      updated_at: new Date().toISOString()
-    };
-    
-    const updateQuery = supabase
+    // Update bot - use direct object without typing
+    const { error: updateError } = await (supabase as any)
       .from('bots')
-      .update(updateData)
-      .eq('id', bot.id);
-    
-    const { error: updateError } = await updateQuery;
+      .update({
+        is_paused: newPauseState,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', (bot as any).id);
 
     if (updateError) {
       console.error('Error updating bot:', updateError);
@@ -78,16 +69,15 @@ export async function POST(
 
     // Log audit event
     try {
-      await supabase.rpc('audit_log', {
+      await (supabase as any).rpc('audit_log', {
         p_org_id: userOrg.orgId,
         p_user_id: user.id,
         p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
         p_resource_type: 'bot',
-        p_resource_id: bot.id,
-        p_details: { handle: bot.handle, display_name: bot.display_name },
+        p_resource_id: (bot as any).id,
+        p_details: { handle: (bot as any).handle, display_name: (bot as any).display_name },
       });
     } catch (auditError) {
-      // Log but don't fail if audit fails
       console.error('Audit log error:', auditError);
     }
 
@@ -96,11 +86,12 @@ export async function POST(
       is_paused: newPauseState,
       message: newPauseState ? 'Bot paused successfully' : 'Bot resumed successfully',
     });
-  } catch (error: any) {
-    console.error('Error toggling bot pause:', error);
+  } catch (error: unknown) {
+    const err = error as any;
+    console.error('Error toggling bot pause:', err);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: error.message.includes('Forbidden') ? 403 : 500 }
+      { error: err.message || 'Internal server error' },
+      { status: err.message?.includes('Forbidden') ? 403 : 500 }
     );
   }
 }
