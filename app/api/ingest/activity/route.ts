@@ -62,20 +62,23 @@ export async function POST(request: NextRequest) {
 
     const activityData = validation.data;
 
-    // Get bot by ingest key
+    // Get bot by ingest key with type assertion
     const supabase = createServiceClient();
-    const { data: bot, error: botError } = await supabase
+    const { data: botData, error: botError } = await (supabase as any)
       .from('bots')
       .select('id, org_id, project_id, hmac_secret, is_paused, default_tags')
       .eq('ingest_key', ingestKey)
       .single();
 
-    if (botError || !bot) {
+    if (botError || !botData) {
       return NextResponse.json(
         { error: 'Invalid ingest key' },
         { status: 401 }
       );
     }
+
+    // Type assertion after null check
+    const bot = botData as any;
 
     // Check if bot is paused
     if (bot.is_paused) {
@@ -114,74 +117,79 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for idempotency
-    const { data: existingActivity } = await supabase
+    // Check for duplicate event_uid
+    const { data: existingActivity } = await (supabase as any)
       .from('activities')
       .select('id')
-      .eq('event_uid', activityData.event_uid)
       .eq('bot_id', bot.id)
+      .eq('event_uid', activityData.event_uid)
       .single();
 
     if (existingActivity) {
-      // Already processed - return success
-      return NextResponse.json({
-        success: true,
-        message: 'Activity already recorded',
-        activityId: existingActivity.id,
-        idempotent: true,
-      });
+      return NextResponse.json(
+        {
+          success: true,
+          duplicate: true,
+          message: 'Activity with this event_uid already exists',
+        },
+        { status: 200 }
+      );
     }
 
-    // Merge default tags with activity tags
-    const mergedTags = [
-      ...(bot.default_tags as string[] || []),
+    // Merge bot default tags with activity tags
+    const allTags = [
       ...(activityData.tags || []),
+      ...(bot.default_tags as string[] || []),
     ];
-    const uniqueTags = [...new Set(mergedTags)];
+
+    // Remove duplicates
+    const uniqueTags = [...new Set(allTags)];
 
     // Insert activity
-    const { data: activity, error: insertError } = await supabase
+    const activity = {
+      bot_id: bot.id,
+      org_id: bot.org_id,
+      project_id: bot.project_id,
+      event_uid: activityData.event_uid,
+      event_type: activityData.event_type,
+      severity: activityData.severity,
+      message: activityData.message,
+      details: activityData.details || {},
+      metadata: activityData.metadata || {},
+      tags: uniqueTags,
+      ticket_id: activityData.ticket_id || null,
+      ticket_system: activityData.ticket_system || null,
+      occurred_at: activityData.occurred_at || new Date().toISOString(),
+    };
+
+    const { data: insertedActivity, error: insertError } = await (supabase as any)
       .from('activities')
-      .insert({
-        bot_id: bot.id,
-        org_id: bot.org_id,
-        project_id: bot.project_id,
-        event_uid: activityData.event_uid,
-        event_type: activityData.event_type,
-        severity: activityData.severity,
-        message: activityData.message,
-        details: activityData.details,
-        ticket_id: activityData.ticket_id,
-        tags: uniqueTags.length > 0 ? uniqueTags : null,
-        occurred_at: activityData.occurred_at,
-      })
+      .insert(activity)
       .select('id')
       .single();
 
     if (insertError) {
-      console.error('Insert error:', insertError);
+      console.error('Error inserting activity:', insertError);
       return NextResponse.json(
-        { error: 'Failed to record activity' },
+        { error: 'Failed to insert activity' },
         { status: 500 }
       );
     }
 
     // Update bot last_activity_at
-    await supabase
+    await (supabase as any)
       .from('bots')
       .update({ last_activity_at: new Date().toISOString() })
       .eq('id', bot.id);
 
     return NextResponse.json({
       success: true,
-      message: 'Activity recorded successfully',
-      activityId: activity.id,
-      idempotent: false,
+      activityId: insertedActivity.id,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Ingest error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
