@@ -11,6 +11,7 @@ export const activityIngestSchema = z.object({
   details: z.record(z.any()).optional().nullable(),
   metadata: z.record(z.any()).optional().nullable(),
   ticket_id: z.string().max(100).optional().nullable(),
+  ticket_system: z.enum(['jira', 'github', 'linear']).optional().nullable(),
   tags: z.array(z.string().max(50)).optional().nullable(),
   occurred_at: z.string().datetime(),
 });
