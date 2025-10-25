@@ -1,6 +1,29 @@
 # CRAV Bot/Avatar Activity Log
 
+> ⚠️ **SETUP REQUIRED:** Before deployment works, you must run the database migrations.  
+> **See: [MIGRATION_INSTRUCTIONS.md](./MIGRATION_INSTRUCTIONS.md)** for step-by-step setup (5 minutes)
+
 Enterprise-grade bot/avatar activity monitoring dashboard with multi-tenant support, analytics, and ticket integration.
+
+---
+
+## 🚨 Quick Start
+
+**Step 1: Run Database Migrations (Required)**
+```
+1. Open: https://supabase.com/dashboard/project/kteobfyferrukqeolofj/sql
+2. Copy contents of: supabase/COMPLETE_MIGRATION.sql
+3. Paste and Run
+4. Done! ✅
+```
+
+**Step 2: Deploy**
+- Vercel will automatically build once migrations complete
+- Build will succeed and app will be live
+
+**Detailed Instructions:** [MIGRATION_INSTRUCTIONS.md](./MIGRATION_INSTRUCTIONS.md)
+
+---
 
 ## 🚀 Features
 
@@ -21,12 +44,16 @@ Enterprise-grade bot/avatar activity monitoring dashboard with multi-tenant supp
 - **Per-bot rate limiting** with anomaly detection
 - **Comprehensive security** (WCAG 2.2 AA, OWASP Top 10)
 
+---
+
 ## 📋 Prerequisites
 
 - Node.js 18+
 - Supabase account with project created
 - Vercel account (for deployment)
 - GitHub account
+
+---
 
 ## 🛠️ Environment Variables
 
@@ -48,224 +75,148 @@ REQUIRE_HMAC=1
 UI_EXPORT_ENABLED=1
 PUBLIC_READONLY_DASH=0
 INGEST_RATE_LIMIT_PER_MIN=120
-
-# Ticket Integration (Optional)
-TICKET_TOKEN_JIRA=
-TICKET_TOKEN_GITHUB=
-TICKET_TOKEN_LINEAR=
 ```
+
+---
 
 ## 🗄️ Database Setup
 
-Run the SQL migrations in order from `supabase/migrations/`:
+**Critical:** Run migrations before first deployment!
 
-1. `001_initial_schema.sql` - Base tables (bots, tickets, activities, audit)
-2. `002_orgs_and_rbac.sql` - Multi-tenant org/project structure
-3. `003_bot_settings.sql` - Bot configuration features
-4. `004_analytics.sql` - Saved views and analytics
-5. `005_ticket_integration.sql` - Ticket sources and deep-links
+See [MIGRATION_INSTRUCTIONS.md](./MIGRATION_INSTRUCTIONS.md) for detailed setup.
 
-Run these in your Supabase SQL Editor.
+**Quick version:**
+1. Open Supabase SQL Editor
+2. Run `supabase/COMPLETE_MIGRATION.sql`
+3. Verify tables are created
+4. Deploy to Vercel
 
-## 🚀 Vercel Deployment (Preview-Only to Save Credits)
+---
 
-### Step 1: Create Vercel Project
+## 📦 Deployment
 
-```bash
-# Import the GitHub repository to Vercel
-# Framework: Next.js
-# Build Command: (default)
-# Output Directory: (default)
-```
+### Vercel (Recommended)
 
-### Step 2: CRITICAL - Configure Preview-Only Deployments
+1. **Run database migrations first** (see above)
+2. Connect your GitHub repository
+3. Environment variables will auto-sync from Vercel project
+4. Deploy!
 
-**In Vercel Project Settings:**
-
-1. Go to **Settings → Git**
-2. Scroll to **Ignored Build Step**
-3. Set the command to:
-   ```bash
-   exit 1
-   ```
-4. Click **Save**
-
-**This is critical!** Setting `exit 1` prevents automatic deployments on every push, saving Vercel credits. All deployments will go to **Preview** only.
-
-### Step 3: Add Environment Variables
-
-In Vercel Project Settings → Environment Variables, add all variables from `.env.example`:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE`
-- `DEFAULT_ORG_SLUG`
-- `BOT_INGEST_ENABLED=1`
-- `REQUIRE_HMAC=1`
-- `UI_EXPORT_ENABLED=1`
-- And any other optional variables
-
-### Step 4: Manual Deployment
-
-When ready to deploy:
-
-1. Go to Vercel Dashboard → Deployments
-2. Click **"Deploy"** button manually
-3. Choose the commit you want to deploy
-4. Deploy goes to **Preview** (not Production)
-5. Test thoroughly on preview URL
-6. When satisfied, promote to Production manually
-
-## 📝 Seeding Demo Data
-
-```bash
-npm run seed
-```
-
-This creates:
-- Organization (DEFAULT_ORG_SLUG)
-- Test project
-- Admin membership (DEV_USER_ID)
-- Sample bot with keys
-
-## ✅ Verify Installation
-
-```bash
-npm run verify
-```
-
-This:
-- Posts a signed test activity
-- Confirms 200 response
-- Verifies row appears in database
-
-## 🏗️ Development
+### Manual Deployment
 
 ```bash
 # Install dependencies
 npm install
 
-# Run development server
-npm run dev
-
-# Build for production
+# Build
 npm run build
 
-# Type checking
-npm run type-check
+# Start
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+---
 
-## 📊 Application Structure
+## 📊 What Gets Created
 
-```
-app/
-├── api/
-│   ├── health/          # Health check endpoint
-│   ├── ingest/          # Activity ingestion
-│   ├── bots/            # Bot management
-│   ├── analytics/       # Charts and analytics
-│   ├── saved-views/     # User filter presets
-│   └── tickets/         # Ticket sync
-├── bots/
-│   ├── page.tsx         # Bot cards grid
-│   └── [handle]/
-│       ├── page.tsx     # Bot dashboard
-│       └── settings/    # Bot settings
-└── analytics/           # Org-wide analytics
+**Tables (8):**
+- `organizations` - Multi-tenant organization management
+- `projects` - Project grouping within orgs  
+- `members` - User-org relationships with RBAC
+- `bots` - Bot configuration and API keys
+- `bot_activities` - Activity log entries
+- `tickets` - Jira/GitHub/Linear integration
+- `audit_logs` - Admin action tracking
+- `bot_settings` - Per-bot configuration
 
-components/
-├── ui/                  # shadcn/ui components
-├── BotCard.tsx         # Bot summary card
-├── ActivityTable.tsx   # Activity list/table
-├── BotFilters.tsx      # Filter controls
-├── ChartsPanel.tsx     # Analytics charts
-└── DownloadMenu.tsx    # Export menu
+**Plus:** Functions, triggers, RLS policies, and performance indexes
 
-lib/
-├── supabase/           # Supabase clients
-├── tickets/            # Ticket provider integrations
-├── hmac.ts            # HMAC signature verification
-├── validation.ts      # Zod schemas
-├── org-helpers.ts     # Multi-tenant utilities
-└── flags.ts           # Feature flags
+---
 
-supabase/migrations/    # SQL schema files
-scripts/               # Seed and verify scripts
-```
+## 🔐 Security
 
-## 🔒 Security Features
-
-- **HMAC signature verification** for all ingest requests
 - **Row Level Security (RLS)** on all tables
+- **HMAC authentication** for bot ingestion
 - **RBAC** with admin/member/viewer roles
-- **Input validation** with Zod schemas
-- **Rate limiting** on ingest endpoints
-- **Audit logging** for all admin actions
-- **WCAG 2.2 AA** compliance
+- **Rate limiting** per bot
+- **Audit logging** for compliance
 - **OWASP Top 10** protections
 
-## 🎯 API Endpoints
+---
 
-### Public
-- `POST /api/ingest/activity` - Ingest bot activity (HMAC required)
+## 📖 API Documentation
 
-### Authenticated
-- `GET /api/health` - Health check
-- `GET /api/bots` - List bots
-- `GET /api/bots/[handle]` - Bot details
-- `GET /api/bots/[handle]/activities` - Activity list
-- `POST /api/bots/[handle]/rotate` - Rotate keys
-- `POST /api/bots/[handle]/pause` - Pause/resume bot
-- `POST /api/bots/[handle]/ping` - Test ping
-- `GET /api/analytics/*` - Analytics endpoints
-- `POST /api/tickets/sync` - Sync ticket status
-
-## 📈 Monitoring
-
-Access the health check endpoint:
+### Ingest API
 
 ```bash
-curl https://your-app.vercel.app/api/health
-```
+POST /api/ingest
+Content-Type: application/json
+X-Bot-Key: your_bot_ingest_key
+X-HMAC-Signature: computed_signature
 
-Returns:
-```json
 {
-  "ok": true,
-  "db": true,
-  "lastActivityAt": "2025-10-25T18:00:00.000Z",
-  "version": "1.0.0",
-  "time": "2025-10-25T18:00:00.000Z"
+  "event": "task.completed",
+  "message": "User task finished",
+  "metadata": { "userId": "123" }
 }
 ```
 
-## 🎨 Tech Stack
+### Management API
 
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS + shadcn/ui
-- **Database:** Supabase (PostgreSQL)
-- **Auth:** Supabase Auth
-- **Deployment:** Vercel
-- **Validation:** Zod
-- **Charts:** Recharts
+- `POST /api/bots/[handle]/pause` - Pause/resume bot
+- `POST /api/bots/[handle]/rotate` - Rotate API keys
+- `POST /api/bots/[handle]/ping` - Health check
+- `GET /api/activities` - List activities with filters
+- `GET /api/analytics/overview` - Analytics dashboard data
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run tests
+npm test
+
+# Run with coverage
+npm run test:coverage
+
+# E2E tests
+npm run test:e2e
+```
+
+---
+
+## 📚 Documentation
+
+- [Migration Instructions](./MIGRATION_INSTRUCTIONS.md) - Database setup
+- [API Documentation](./docs/API.md) - Complete API reference
+- [Architecture](./docs/ARCHITECTURE.md) - System design
+- [Security](./docs/SECURITY.md) - Security model
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Make changes
+4. Submit pull request
+
+---
 
 ## 📄 License
 
 Proprietary - CR AudioViz AI, LLC
 
-## 🤝 Support
+---
 
-For support, contact: info@craudiovizai.com
+## 🆘 Support
+
+For issues or questions:
+- Create an issue on GitHub
+- Email: info@craudiovizai.com
 
 ---
 
 **Built with ❤️ by CR AudioViz AI**
 
-
----
-
-
-**Last Deployment:** 2025-10-25 19:45:07 ET
