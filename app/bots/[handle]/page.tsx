@@ -7,30 +7,7 @@ import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
 import { ArrowLeft, Settings } from 'lucide-react';
 import { notFound } from 'next/navigation';
-
-// Type definitions
-type Bot = {
-  id: string;
-  handle: string;
-  display_name: string;
-  is_paused: boolean;
-  last_activity_at: string | null;
-  org_id: string;
-  default_tags: string[] | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type Activity = {
-  id: string;
-  bot_id: string;
-  event_type: string;
-  severity: 'info' | 'success' | 'warning' | 'error' | 'needs_attention';
-  message: string | null;
-  occurred_at: string;
-  tags: string[] | null;
-  metadata: Record<string, any> | null;
-};
+import type { Bot, Activity } from '@/lib/types';
 
 interface PageProps {
   params: {
@@ -73,26 +50,28 @@ export default async function BotDashboardPage({ params }: PageProps) {
   }
 
   // Get bot details
-  const { data: bot, error: botError } = await supabase
+  const { data: botData, error: botError } = await supabase
     .from('bots')
     .select('*')
     .eq('handle', params.handle)
     .eq('org_id', userOrg.orgId)
-    .single()
-    .returns<Bot>();
+    .single();
 
-  if (botError || !bot) {
+  if (botError || !botData) {
     return notFound();
   }
+  
+  const bot = botData as Bot;
 
   // Get recent activities
-  const { data: activities, error: activitiesError } = await supabase
+  const { data: activitiesData, error: activitiesError } = await supabase
     .from('activities')
     .select('*')
     .eq('bot_id', bot.id)
     .order('occurred_at', { ascending: false })
-    .limit(50)
-    .returns<Activity[]>();
+    .limit(50);
+    
+  const activities = activitiesData as Activity[] | null;
 
   return (
     <div className="min-h-screen bg-background p-8">
