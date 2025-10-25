@@ -64,7 +64,7 @@ export default async function BotDashboardPage({ params }: PageProps) {
   const bot = botData as any;
 
   // Get recent activities
-  const { data: activities, error: activitiesError } = await (supabase as any)
+  const { data: activities, error: activitiesError } = await supabase
     .from('activities')
     .select('*')
     .eq('bot_id', bot.id)
@@ -171,7 +171,7 @@ export default async function BotDashboardPage({ params }: PageProps) {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {activities.map((activity) => (
+                      {activities.map((activity: any) => (
                         <tr key={activity.id} className="hover:bg-muted/50">
                           <td className="px-4 py-3 whitespace-nowrap">
                             {formatDate(activity.occurred_at)}
