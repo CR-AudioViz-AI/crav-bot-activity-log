@@ -5,8 +5,8 @@ export async function GET() {
   try {
     const supabase = createServiceClient();
 
-    // Check database connection
-    const { data: activities, error } = await supabase
+    // Check database connection with type assertion
+    const { data: activities, error } = await (supabase as any)
       .from('activities')
       .select('occurred_at')
       .order('occurred_at', { ascending: false })
