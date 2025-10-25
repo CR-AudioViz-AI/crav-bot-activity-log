@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
 
+// Define bot type explicitly
+type Bot = {
+  id: string;
+  handle: string;
+  display_name: string;
+  org_id: string;
+  is_paused: boolean;
+  [key: string]: any;
+};
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { handle: string } }
@@ -32,7 +42,7 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot
+    // Get bot with explicit type
     const { data: bot, error: botError } = await supabase
       .from('bots')
       .select('*')
@@ -47,13 +57,16 @@ export async function POST(
       );
     }
 
+    // Type assertion to help TypeScript
+    const typedBot = bot as Bot;
+
     // Toggle pause status
-    const newPauseState = !bot.is_paused;
+    const newPauseState = !typedBot.is_paused;
     
     const { error: updateError } = await supabase
       .from('bots')
       .update({ is_paused: newPauseState })
-      .eq('id', bot.id);
+      .eq('id', typedBot.id);
 
     if (updateError) {
       console.error('Error updating bot:', updateError);
@@ -69,8 +82,8 @@ export async function POST(
       p_user_id: user.id,
       p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
       p_resource_type: 'bot',
-      p_resource_id: bot.id,
-      p_details: { handle: bot.handle, display_name: bot.display_name },
+      p_resource_id: typedBot.id,
+      p_details: { handle: typedBot.handle, display_name: typedBot.display_name },
     });
 
     return NextResponse.json({
