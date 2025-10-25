@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
 import { randomBytes } from 'crypto';
+import type { Database } from '@/lib/supabase/types';
+
+type BotUpdate = Database['public']['Tables']['bots']['Update'];
 
 function generateKey(prefix: string): string {
   return `${prefix}_${randomBytes(32).toString('hex')}`;
@@ -38,12 +41,14 @@ export async function POST(
     await requireAdmin(user.id, userOrg.orgId);
 
     // Get bot
-    const { data: bot, error: botError } = await supabase
+    const botQuery = supabase
       .from('bots')
-      .select('*')
+      .select('id, handle, display_name')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
+    
+    const { data: bot, error: botError } = await botQuery;
 
     if (botError || !bot) {
       return NextResponse.json(
@@ -56,13 +61,18 @@ export async function POST(
     const newIngestKey = generateKey('ingest');
     const newHmacSecret = generateKey('hmac');
     
-    const { error: updateError } = await supabase
+    const updateData: BotUpdate = {
+      ingest_key: newIngestKey,
+      hmac_secret: newHmacSecret,
+      updated_at: new Date().toISOString()
+    };
+    
+    const updateQuery = supabase
       .from('bots')
-      .update({ 
-        ingest_key: newIngestKey,
-        hmac_secret: newHmacSecret,
-      })
+      .update(updateData)
       .eq('id', bot.id);
+    
+    const { error: updateError } = await updateQuery;
 
     if (updateError) {
       console.error('Error rotating keys:', updateError);
@@ -73,14 +83,18 @@ export async function POST(
     }
 
     // Log audit event
-    await supabase.rpc('audit_log', {
-      p_org_id: userOrg.orgId,
-      p_user_id: user.id,
-      p_action: 'bot.keys_rotated',
-      p_resource_type: 'bot',
-      p_resource_id: bot.id,
-      p_details: { handle: bot.handle, display_name: bot.display_name },
-    });
+    try {
+      await supabase.rpc('audit_log', {
+        p_org_id: userOrg.orgId,
+        p_user_id: user.id,
+        p_action: 'bot.keys_rotated',
+        p_resource_type: 'bot',
+        p_resource_id: bot.id,
+        p_details: { handle: bot.handle, display_name: bot.display_name },
+      });
+    } catch (auditError) {
+      console.error('Audit log error:', auditError);
+    }
 
     return NextResponse.json({
       success: true,
