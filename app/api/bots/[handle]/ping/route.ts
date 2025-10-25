@@ -33,19 +33,22 @@ export async function POST(
     await requireAdmin(user.id, userOrg.orgId);
 
     // Get bot
-    const { data: bot, error: botError } = await supabase
+    const { data: botData, error: botError } = await supabase
       .from('bots')
       .select('*')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
 
-    if (botError || !bot) {
+    if (botError || !botData) {
       return NextResponse.json(
         { error: 'Bot not found' },
         { status: 404 }
       );
     }
+
+    // Type assertion after null check
+    const bot = botData as any;
 
     // Create test activity
     const testActivity = {
