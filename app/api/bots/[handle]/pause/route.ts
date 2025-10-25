@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
+import type { Database } from '@/lib/supabase/types';
 
-// Define proper types
-interface Bot {
-  id: string;
-  handle: string;
-  display_name: string;
-  is_paused: boolean;
-}
+type Bot = Database['public']['Tables']['bots']['Row'];
 
 export async function POST(
   request: NextRequest,
@@ -40,13 +35,13 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot - properly typed
+    // Get bot
     const { data: bot, error: botError } = await supabase
       .from('bots')
       .select('id, handle, display_name, is_paused')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
-      .single<Bot>();
+      .single();
 
     if (botError || !bot) {
       return NextResponse.json(
