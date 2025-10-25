@@ -8,6 +8,30 @@ import Link from 'next/link';
 import { ArrowLeft, Settings } from 'lucide-react';
 import { notFound } from 'next/navigation';
 
+// Type definitions
+type Bot = {
+  id: string;
+  handle: string;
+  display_name: string;
+  is_paused: boolean;
+  last_activity_at: string | null;
+  org_id: string;
+  default_tags: string[] | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type Activity = {
+  id: string;
+  bot_id: string;
+  event_type: string;
+  severity: 'info' | 'success' | 'warning' | 'error' | 'needs_attention';
+  message: string | null;
+  occurred_at: string;
+  tags: string[] | null;
+  metadata: Record<string, any> | null;
+};
+
 interface PageProps {
   params: {
     handle: string;
@@ -49,19 +73,17 @@ export default async function BotDashboardPage({ params }: PageProps) {
   }
 
   // Get bot details
-  const { data: botData, error: botError } = await (supabase as any)
+  const { data: bot, error: botError } = await supabase
     .from('bots')
     .select('*')
     .eq('handle', params.handle)
     .eq('org_id', userOrg.orgId)
-    .single();
+    .single()
+    .returns<Bot>();
 
-  if (botError || !botData) {
+  if (botError || !bot) {
     return notFound();
   }
-
-  // Type assertion after null check
-  const bot = botData as any;
 
   // Get recent activities
   const { data: activities, error: activitiesError } = await supabase
@@ -69,7 +91,8 @@ export default async function BotDashboardPage({ params }: PageProps) {
     .select('*')
     .eq('bot_id', bot.id)
     .order('occurred_at', { ascending: false })
-    .limit(50);
+    .limit(50)
+    .returns<Activity[]>();
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -171,7 +194,7 @@ export default async function BotDashboardPage({ params }: PageProps) {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {activities.map((activity: any) => (
+                      {activities?.map((activity: Activity) => (
                         <tr key={activity.id} className="hover:bg-muted/50">
                           <td className="px-4 py-3 whitespace-nowrap">
                             {formatDate(activity.occurred_at)}
