@@ -49,16 +49,19 @@ export default async function BotDashboardPage({ params }: PageProps) {
   }
 
   // Get bot details
-  const { data: bot, error: botError } = await supabase
+  const { data: botData, error: botError } = await (supabase as any)
     .from('bots')
     .select('*')
     .eq('handle', params.handle)
     .eq('org_id', userOrg.orgId)
     .single();
 
-  if (botError || !bot) {
+  if (botError || !botData) {
     return notFound();
   }
+
+  // Type assertion after null check
+  const bot = botData as any;
 
   // Get recent activities
   const { data: activities, error: activitiesError } = await supabase
