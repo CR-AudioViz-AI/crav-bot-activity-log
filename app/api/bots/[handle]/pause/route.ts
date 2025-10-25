@@ -33,31 +33,34 @@ export async function POST(
     await requireAdmin(user.id, userOrg.orgId);
 
     // Get bot
-    const { data: bot, error: botError } = await supabase
+    const { data: botData, error: botError } = await supabase
       .from('bots')
       .select('id, handle, display_name, is_paused')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
 
-    if (botError || !bot) {
+    if (botError || !botData) {
       return NextResponse.json(
         { error: 'Bot not found' },
         { status: 404 }
       );
     }
 
+    // Type assertion after null check
+    const bot = botData as any;
+
     // Toggle pause status
-    const newPauseState = !(bot as any).is_paused;
+    const newPauseState = !bot.is_paused;
     
-    // Update bot - use direct object without typing
-    const { error: updateError } = await (supabase as any)
+    // Update bot
+    const { error: updateError } = await supabase
       .from('bots')
       .update({
         is_paused: newPauseState,
         updated_at: new Date().toISOString()
       })
-      .eq('id', (bot as any).id);
+      .eq('id', bot.id);
 
     if (updateError) {
       console.error('Error updating bot:', updateError);
@@ -69,13 +72,13 @@ export async function POST(
 
     // Log audit event
     try {
-      await (supabase as any).rpc('audit_log', {
+      await supabase.rpc('audit_log', {
         p_org_id: userOrg.orgId,
         p_user_id: user.id,
         p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
         p_resource_type: 'bot',
-        p_resource_id: (bot as any).id,
-        p_details: { handle: (bot as any).handle, display_name: (bot as any).display_name },
+        p_resource_id: bot.id,
+        p_details: { handle: bot.handle, display_name: bot.display_name },
       });
     } catch (auditError) {
       console.error('Audit log error:', auditError);
