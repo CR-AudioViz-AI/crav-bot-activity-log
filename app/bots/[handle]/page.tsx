@@ -138,7 +138,7 @@ export default async function BotDashboardPage({ params }: PageProps) {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-1">
-                {(bot.default_tags as string[] || []).map((tag) => (
+                {(bot.default_tags as string[] || []).map((tag: string) => (
                   <Badge key={tag} variant="outline" className="text-xs">
                     {tag}
                   </Badge>
@@ -187,7 +187,7 @@ export default async function BotDashboardPage({ params }: PageProps) {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex flex-wrap gap-1">
-                              {(activity.tags || []).map((tag) => (
+                              {(activity.tags || []).map((tag: string) => (
                                 <Badge key={tag} variant="outline" className="text-xs">
                                   {tag}
                                 </Badge>
