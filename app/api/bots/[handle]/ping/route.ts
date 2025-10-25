@@ -32,8 +32,8 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot
-    const { data: botData, error: botError } = await supabase
+    // Get bot with type assertion
+    const { data: botData, error: botError } = await (supabase as any)
       .from('bots')
       .select('*')
       .eq('handle', params.handle)
@@ -68,7 +68,7 @@ export async function POST(
       occurred_at: new Date().toISOString(),
     };
 
-    const { data: activity, error: insertError } = await supabase
+    const { data: activity, error: insertError } = await (supabase as any)
       .from('activities')
       .insert(testActivity)
       .select('id')
@@ -83,7 +83,7 @@ export async function POST(
     }
 
     // Update bot last_activity_at
-    await supabase
+    await (supabase as any)
       .from('bots')
       .update({ last_activity_at: new Date().toISOString() })
       .eq('id', bot.id);
