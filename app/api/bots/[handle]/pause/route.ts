@@ -57,7 +57,6 @@ export async function POST(
     // Toggle pause status
     const newPauseState = !bot.is_paused;
     
-    // @ts-expect-error - Supabase TypeScript types have inference issues with update
     const { error: updateError } = await supabase
       .from('bots')
       .update({
@@ -76,7 +75,6 @@ export async function POST(
 
     // Log audit event
     try {
-      // @ts-expect-error - Supabase RPC types need refinement
       await supabase.rpc('audit_log', {
         p_org_id: userOrg.orgId,
         p_user_id: user.id,
