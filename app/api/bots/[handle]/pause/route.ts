@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
-import type { Database } from '@/lib/supabase/types';
-
-type Bot = Database['public']['Tables']['bots']['Row'];
 
 export async function POST(
   request: NextRequest,
@@ -36,32 +33,31 @@ export async function POST(
     await requireAdmin(user.id, userOrg.orgId);
 
     // Get bot
-    const { data, error: botError } = await supabase
+    const { data: bot, error: botError } = await supabase
       .from('bots')
       .select('*')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
 
-    if (botError || !data) {
+    if (botError || !bot) {
       return NextResponse.json(
         { error: 'Bot not found' },
         { status: 404 }
       );
     }
 
-    const bot = data as Bot;
-
     // Toggle pause status
-    const newPauseState = !bot.is_paused;
+    const newPauseState = !(bot as any).is_paused;
     
+    // @ts-ignore - Supabase type inference issue
     const { error: updateError } = await supabase
       .from('bots')
       .update({ 
         is_paused: newPauseState,
         updated_at: new Date().toISOString()
-      })
-      .eq('id', bot.id);
+      } as any)
+      .eq('id', (bot as any).id);
 
     if (updateError) {
       console.error('Error updating bot:', updateError);
@@ -78,8 +74,8 @@ export async function POST(
         p_user_id: user.id,
         p_action: newPauseState ? 'bot.paused' : 'bot.resumed',
         p_resource_type: 'bot',
-        p_resource_id: bot.id,
-        p_details: { handle: bot.handle, display_name: bot.display_name },
+        p_resource_id: (bot as any).id,
+        p_details: { handle: (bot as any).handle, display_name: (bot as any).display_name },
       });
     } catch (auditError) {
       // Log but don't fail the request if audit logging fails
