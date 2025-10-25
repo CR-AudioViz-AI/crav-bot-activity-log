@@ -6,19 +6,7 @@ import { Button } from '@/components/ui/button';
 import { formatRelativeTime } from '@/lib/utils';
 import Link from 'next/link';
 import { Activity, AlertCircle, CheckCircle, Clock, Pause } from 'lucide-react';
-
-// Type definition for Bot
-type Bot = {
-  id: string;
-  handle: string;
-  display_name: string;
-  is_paused: boolean;
-  last_activity_at: string | null;
-  org_id: string;
-  created_at: string;
-  updated_at: string;
-  activities?: { count: number }[];
-};
+import type { Bot } from '@/lib/types';
 
 export default async function BotsPage() {
   const supabase = createClient();
@@ -56,7 +44,7 @@ export default async function BotsPage() {
   }
 
   // Get bots for this organization
-  const { data: bots, error } = await supabase
+  const { data, error } = await supabase
     .from('bots')
     .select(`
       *,
@@ -65,8 +53,9 @@ export default async function BotsPage() {
       )
     `)
     .eq('org_id', userOrg.orgId)
-    .order('display_name')
-    .returns<Bot[]>();
+    .order('display_name');
+  
+  const bots = data as Bot[] | null;
 
   if (error) {
     console.error('Error fetching bots:', error);
