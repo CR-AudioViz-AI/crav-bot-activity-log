@@ -37,26 +37,29 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot
-    const { data: bot, error: botError } = await supabase
+    // Get bot with type assertion
+    const { data: botData, error: botError } = await (supabase as any)
       .from('bots')
       .select('id, handle, display_name')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
 
-    if (botError || !bot) {
+    if (botError || !botData) {
       return NextResponse.json(
         { error: 'Bot not found' },
         { status: 404 }
       );
     }
 
+    // Type assertion after null check
+    const bot = botData as any;
+
     // Generate new keys
     const newIngestKey = generateKey('ingest');
     const newHmacSecret = generateKey('hmac');
     
-    // Update with type bypass
+    // Update with type assertion
     const { error: updateError } = await (supabase as any)
       .from('bots')
       .update({
@@ -64,7 +67,7 @@ export async function POST(
         hmac_secret: newHmacSecret,
         updated_at: new Date().toISOString()
       })
-      .eq('id', (bot as any).id);
+      .eq('id', bot.id);
 
     if (updateError) {
       console.error('Error rotating keys:', updateError);
@@ -81,8 +84,8 @@ export async function POST(
         p_user_id: user.id,
         p_action: 'bot.keys_rotated',
         p_resource_type: 'bot',
-        p_resource_id: (bot as any).id,
-        p_details: { handle: (bot as any).handle, display_name: (bot as any).display_name },
+        p_resource_id: bot.id,
+        p_details: { handle: bot.handle, display_name: bot.display_name },
       });
     } catch (auditError) {
       console.error('Audit log error:', auditError);
