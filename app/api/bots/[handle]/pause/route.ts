@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getUserOrg, requireAdmin } from '@/lib/org-helpers';
-import type { Database } from '@/lib/supabase/types';
-
-type Bot = Database['public']['Tables']['bots']['Row'];
 
 export async function POST(
   request: NextRequest,
@@ -35,31 +32,41 @@ export async function POST(
     // Check admin access
     await requireAdmin(user.id, userOrg.orgId);
 
-    // Get bot
-    const { data: bot, error: botError } = await supabase
+    // Get bot with explicit typing
+    const { data, error: botError } = await supabase
       .from('bots')
       .select('id, handle, display_name, is_paused')
       .eq('handle', params.handle)
       .eq('org_id', userOrg.orgId)
       .single();
 
-    if (botError || !bot) {
+    if (botError || !data) {
       return NextResponse.json(
         { error: 'Bot not found' },
         { status: 404 }
       );
     }
 
+    // Explicit type for bot data
+    const bot: {
+      id: string;
+      handle: string;
+      display_name: string;
+      is_paused: boolean;
+    } = data;
+
     // Toggle pause status
     const newPauseState = !bot.is_paused;
     
-    // Update bot
+    // Update bot with explicit type
+    const updatePayload: { is_paused: boolean; updated_at: string } = {
+      is_paused: newPauseState,
+      updated_at: new Date().toISOString()
+    };
+    
     const { error: updateError } = await supabase
       .from('bots')
-      .update({
-        is_paused: newPauseState,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', bot.id);
 
     if (updateError) {
