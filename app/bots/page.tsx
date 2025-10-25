@@ -82,6 +82,20 @@ export default async function BotsPage() {
     );
   }
 
+  // Ensure bots is not null
+  if (!bots) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Error Loading Bots</CardTitle>
+            <CardDescription>Unable to load bots data</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="mx-auto max-w-7xl">
@@ -92,7 +106,7 @@ export default async function BotsPage() {
           </p>
         </div>
 
-        {!bots || bots.length === 0 ? (
+        {bots.length === 0 ? (
           <Card>
             <CardHeader>
               <CardTitle>No Bots Found</CardTitle>
