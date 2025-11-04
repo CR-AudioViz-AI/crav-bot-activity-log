@@ -1,5 +1,33 @@
 import { createClient } from './supabase/server';
 
+// Define explicit types for database returns
+type MemberWithOrg = {
+  user_id: string;
+  org_id: string;
+  role: string;
+  organizations: {
+    id: string;
+    name: string;
+    slug: string;
+    [key: string]: any;
+  } | null;
+  [key: string]: any;
+};
+
+type Member = {
+  user_id: string;
+  org_id: string;
+  role: string;
+  [key: string]: any;
+};
+
+type Organization = {
+  id: string;
+  name: string;
+  slug: string;
+  [key: string]: any;
+};
+
 /**
  * Get user's organization membership
  */
@@ -16,10 +44,13 @@ export async function getUserOrg(userId: string) {
     return null;
   }
 
+  // Type assertion to help TypeScript
+  const typedMember = member as MemberWithOrg;
+
   return {
-    orgId: member.org_id,
-    role: member.role,
-    organization: member.organizations,
+    orgId: typedMember.org_id,
+    role: typedMember.role,
+    organization: typedMember.organizations,
   };
 }
 
@@ -40,7 +71,9 @@ export async function isOrgAdmin(userId: string, orgId: string): Promise<boolean
     return false;
   }
 
-  return member.role === 'admin';
+  // Type assertion to help TypeScript
+  const typedMember = member as Member;
+  return typedMember.role === 'admin';
 }
 
 /**
@@ -59,7 +92,8 @@ export async function getOrgBySlug(slug: string) {
     return null;
   }
 
-  return org;
+  // Type assertion to help TypeScript
+  return org as Organization;
 }
 
 /**
