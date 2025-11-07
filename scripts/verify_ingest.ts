@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createHmac } from 'crypto';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 // Load environment variables
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -133,8 +134,8 @@ async function verify() {
     console.log('  • Database persistence ✓');
     console.log('  • Idempotency ✓');
     console.log('═══════════════════════════════════════════════════════\n');
-  } catch (error) {
-    console.error('\n❌ Verification failed:', error);
+  } catch (error: unknown) {
+    logError(\'\n❌ Verification failed:\', error);
     process.exit(1);
   }
 }
