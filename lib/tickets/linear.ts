@@ -1,4 +1,5 @@
 import type { TicketProvider, TicketInfo, ProviderConfig } from './base';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 export class LinearProvider implements TicketProvider {
   name = 'linear';
@@ -60,8 +61,8 @@ export class LinearProvider implements TicketProvider {
         assignee: issue.assignee?.name,
         deepLink: issue.url,
       };
-    } catch (error) {
-      console.error('Error fetching Linear ticket:', error);
+    } catch (error: unknown) {
+      logError(\'Error fetching Linear ticket:\', error);
       return null;
     }
   }
