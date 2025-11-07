@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 /**
  * Generate HMAC signature for activity data
@@ -28,8 +29,8 @@ export function verifyHmac(
       Buffer.from(expected, 'hex'),
       Buffer.from(actual, 'hex')
     );
-  } catch (error) {
-    console.error('HMAC verification error:', error);
+  } catch (error: unknown) {
+    logError(\'HMAC verification error:\', error);
     return false;
   }
 }
