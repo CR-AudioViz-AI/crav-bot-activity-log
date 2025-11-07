@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 // Load environment variables
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -131,8 +132,8 @@ async function seed() {
     console.log(`Project: ${project.name}`);
     console.log(`Bot: ${bot.display_name} (@${bot.handle})`);
     console.log('═══════════════════════════════════════════════════════\n');
-  } catch (error) {
-    console.error('\n❌ Seed failed:', error);
+  } catch (error: unknown) {
+    logError(\'\n❌ Seed failed:\', error);
     process.exit(1);
   }
 }
