@@ -1,4 +1,5 @@
 import type { TicketProvider, TicketInfo, ProviderConfig } from './base';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 export class GitHubProvider implements TicketProvider {
   name = 'github';
@@ -44,8 +45,8 @@ export class GitHubProvider implements TicketProvider {
         assignee: data.assignee?.login,
         deepLink: this.generateDeepLink(ticketKey),
       };
-    } catch (error) {
-      console.error('Error fetching GitHub ticket:', error);
+    } catch (error: unknown) {
+      logError(\'Error fetching GitHub ticket:\', error);
       return null;
     }
   }
