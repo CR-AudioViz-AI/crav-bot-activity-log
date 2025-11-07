@@ -1,4 +1,5 @@
 import type { TicketProvider, TicketInfo, ProviderConfig } from './base';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 export class JiraProvider implements TicketProvider {
   name = 'jira';
@@ -35,8 +36,8 @@ export class JiraProvider implements TicketProvider {
         assignee: data.fields.assignee?.displayName,
         deepLink: this.generateDeepLink(ticketKey),
       };
-    } catch (error) {
-      console.error('Error fetching Jira ticket:', error);
+    } catch (error: unknown) {
+      logError(\'Error fetching Jira ticket:\', error);
       return null;
     }
   }
