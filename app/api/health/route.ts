@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
+import { getErrorMessage, logError, formatApiError } from '@/lib/utils/error-utils';
 
 export async function GET() {
   try {
@@ -22,8 +23,8 @@ export async function GET() {
       version: '1.0.0',
       time: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('Health check error:', error);
+  } catch (error: unknown) {
+    logError(\'Health check error:\', error);
     return NextResponse.json(
       {
         ok: false,
