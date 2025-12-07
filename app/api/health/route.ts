@@ -24,7 +24,7 @@ export async function GET() {
       time: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    logError(\'Health check error:\', error);
+    logError('Health check error:', error);
     return NextResponse.json(
       {
         ok: false,
