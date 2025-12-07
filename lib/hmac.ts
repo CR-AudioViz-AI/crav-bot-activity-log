@@ -30,7 +30,7 @@ export function verifyHmac(
       Buffer.from(actual, 'hex')
     );
   } catch (error: unknown) {
-    logError(\'HMAC verification error:\', error);
+    logError('HMAC verification error:', error);
     return false;
   }
 }
